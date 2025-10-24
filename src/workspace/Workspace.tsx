@@ -1,38 +1,48 @@
 import { Button } from "@/components/ui/button";
 import { useUser } from "@clerk/clerk-react";
-import React, { useEffect } from "react";
-import { Link, Outlet } from "react-router-dom";
+import React, { useContext, useEffect } from "react";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { FirebaseDb } from "./../../config/FirebaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { UserDetailContext } from "../../context/UserDetailContext";
+import Header from "@/components/ui/custom/Header";
+import PromptBox from "@/components/ui/custom/PromptBox";
+import MyProject from "@/components/ui/custom/MyProject";
 
 function Workspace() {
   const { user } = useUser();
+  const { userDeatil, setUserDeatail } = useContext(UserDetailContext);
+  const location = useLocation();
 
   useEffect(() => {
     if (user) {
       CreateNewUser();
     }
-  },[user])
+  }, [user]);
 
-  const CreateNewUser = async() => {
+  const CreateNewUser = async () => {
     if (user) {
       const docRef = doc(
         FirebaseDb,
         "users",
-        user?.primaryEmailAddress?.emailAddress??'');
+        user?.primaryEmailAddress?.emailAddress ?? ""
+      );
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
         console.log("Document data:", docSnap.data());
+        setUserDeatail(docSnap.data());
       } else {
-        await setDoc(doc(FirebaseDb,"user", 
-          user.primaryEmailAddress?.emailAddress??''),{
-            fullName:user?.fullName,
-            createdAt:new Date(),
-            credits:2,
-
-        })
-        
+        const data = {
+          fullName: user?.fullName,
+          createdAt: new Date(),
+          credits: 2,
+        };
+        await setDoc(
+          doc(FirebaseDb, "users", user.primaryEmailAddress?.emailAddress ?? ""),
+          data
+        );
+        setUserDeatail(data);
       }
     }
   };
@@ -40,17 +50,30 @@ function Workspace() {
   if (!user) {
     return (
       <div>
-        Please sign in to access the workshop,
+        Please sign in to access the workspace,
         <Link to="/">
-          <Button>sing in</Button>
+          <Button>Sign in</Button>
         </Link>
       </div>
     );
   }
+
   return (
-    <div>
-      <Outlet />
-      <h2>Workspace</h2>
+    <div className="min-h-screen flex flex-col bg-white">
+      {/* Header always visible */}
+      <Header />
+
+      {/* Page content below header */}
+      <div className="flex-1 p-6">
+        {location.pathname === "/workspace" ? (
+          <>
+            <PromptBox />
+            <MyProject />
+          </>
+        ) : (
+          <Outlet />
+        )}
+      </div>
     </div>
   );
 }
